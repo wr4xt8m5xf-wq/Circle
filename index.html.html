@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Circle Master" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#111827" />
+  <title>Circle Master</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    body {
+      padding: env(safe-area-inset-top) 14px env(safe-area-inset-bottom);
+    }
+
+    .app {
+      height: 100dvh;
+      max-width: 520px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      padding: 10px 0;
+    }
+
+    header {
+      text-align: center;
+      flex: 0 0 auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: -0.8px;
+    }
+
+    .subtitle {
+      margin-top: 3px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .score-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 10px 8px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      text-align: center;
+    }
+
+    .label {
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 3px;
+    }
+
+    .score {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+      transition: color 0.25s ease, transform 0.25s ease;
+    }
+
+    .score.pop {
+      transform: scale(1.18);
+    }
+
+    .best, .timer {
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1.15;
+    }
+
+    .feedback {
+      min-height: 24px;
+      text-align: center;
+      font-size: 14px;
+      color: #374151;
+      font-weight: 700;
+      flex: 0 0 auto;
+    }
+
+    .mode-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 7px;
+      flex: 0 0 auto;
+    }
+
+    .mode-btn {
+      padding: 9px 6px;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 800;
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .mode-btn.active {
+      background: #111827;
+      color: white;
+    }
+
+    .canvas-wrap {
+      flex: 1 1 auto;
+      min-height: 270px;
+      border-radius: 24px;
+      overflow: hidden;
+      background: white;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+      border: 1px solid rgba(17, 24, 39, 0.08);
+      position: relative;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: white;
+      touch-action: none;
+    }
+
+    .hint {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      color: #9ca3af;
+      font-size: 16px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .hint.hidden {
+      display: none;
+    }
+
+    .big-effect {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      opacity: 0;
+      pointer-events: none;
+      font-size: 42px;
+      font-weight: 1000;
+      letter-spacing: -1px;
+      color: #2563eb;
+      text-shadow: 0 8px 24px rgba(37, 99, 235, 0.25);
+    }
+
+    .big-effect.show {
+      animation: burst 0.9s ease-out forwards;
+    }
+
+    @keyframes burst {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.65); }
+      25% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+      100% { opacity: 0; transform: translate(-50%, -64%) scale(1.35); }
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      flex: 0 0 auto;
+    }
+
+    button {
+      border: none;
+      border-radius: 18px;
+      padding: 14px 10px;
+      font-size: 16px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .reset {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .judge {
+      background: #2563eb;
+      color: white;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .small-note {
+      text-align: center;
+      font-size: 11px;
+      color: #6b7280;
+      flex: 0 0 auto;
+      padding-bottom: 1px;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header>
+      <h1>Circle Master</h1>
+      <div class="subtitle">채점 후 초록 점선으로 정답 원이 표시됩니다</div>
+    </header>
+
+    <section class="score-panel">
+      <div class="card">
+        <div class="label">현재 점수</div>
+        <div id="score" class="score">--</div>
+      </div>
+      <div class="card">
+        <div class="label">최고 점수</div>
+        <div id="bestScore" class="best">0</div>
+      </div>
+      <div class="card">
+        <div class="label">시간</div>
+        <div id="timer" class="timer">∞</div>
+      </div>
+    </section>
+
+    <div id="feedback" class="feedback">캔버스에 원을 한 번에 그려보세요.</div>
+
+    <section class="mode-row">
+      <button id="normalMode" class="mode-btn active">일반</button>
+      <button id="timeMode" class="mode-btn">1초 모드</button>
+      <button id="guideMode" class="mode-btn">기준 원</button>
+    </section>
+
+    <section class="canvas-wrap">
+      <canvas id="drawingCanvas"></canvas>
+      <div id="hint" class="hint">여기에 동그라미를 그리세요</div>
+      <div id="bigEffect" class="big-effect">PERFECT</div>
+    </section>
+
+    <section class="buttons">
+      <button class="reset" id="resetButton">다시 그리기</button>
+      <button class="judge" id="scoreButton">채점하기</button>
+    </section>
+
+    <div class="small-note">손을 떼면 자동 채점됩니다. 홈 화면에 추가하면 앱처럼 실행됩니다.</div>
+  </main>
+
+  <script>
+    /*
+      Circle Master v2
+      추가된 기능:
+      1. 손을 떼면 자동 채점
+      2. 점수 색상 변화
+      3. PERFECT / GOOD 애니메이션
+      4. 최고점 갱신 효과
+      5. 1초 제한시간 모드
+      6. 기준 원 겹쳐보기
+      7. 기록 저장 구조
+    */
+
+    const canvas = document.getElementById("drawingCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreEl = document.getElementById("score");
+    const bestScoreEl = document.getElementById("bestScore");
+    const timerEl = document.getElementById("timer");
+    const feedbackEl = document.getElementById("feedback");
+    const hintEl = document.getElementById("hint");
+    const bigEffectEl = document.getElementById("bigEffect");
+    const resetButton = document.getElementById("resetButton");
+    const scoreButton = document.getElementById("scoreButton");
+    const normalModeButton = document.getElementById("normalMode");
+    const timeModeButton = document.getElementById("timeMode");
+    const guideModeButton = document.getElementById("guideMode");
+
+    let points = [];
+    let isDrawing = false;
+    let bestScore = Number(localStorage.getItem("circleMasterBestScore") || 0);
+    let playHistory = JSON.parse(localStorage.getItem("circleMasterHistory") || "[]");
+
+    let mode = "normal"; // normal, time, guide
+    let showGuideCircle = false;
+    let answerCircle = null; // 채점 후 표시할 정답 원 정보
+    let drawStartTime = 0;
+    let timerInterval = null;
+    let timeLimit = 1000; // 1초 모드
+
+    bestScoreEl.textContent = bestScore;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+
+      canvas.width = Math.floor(rect.width * ratio);
+      canvas.height = Math.floor(rect.height * ratio);
+
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      redraw();
+    }
+
+    function redraw() {
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      if (showGuideCircle) {
+        drawGuideCircle(rect);
+      }
+
+      if (points.length < 2) {
+        if (answerCircle) drawAnswerCircle();
+        return;
+      }
+
+      ctx.beginPath();
+      ctx.lineWidth = 6;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "#2563eb";
+      ctx.moveTo(points[0].x, points[0].y);
+
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+
+      ctx.stroke();
+
+      // 채점 후에는 사용자가 그린 원 위에 정답 원을 초록색으로 겹쳐 보여준다.
+      if (answerCircle) {
+        drawAnswerCircle();
+      }
+    }
+
+    // 채점 후 표시되는 정답 원
+    // 사용자의 좌표 평균 중심점과 평균 반지름으로 만든 가장 이상적인 원이다.
+    function drawAnswerCircle() {
+      if (!answerCircle) return;
+
+      ctx.save();
+
+      // 정답 원의 바깥쪽 빛나는 효과
+      ctx.beginPath();
+      ctx.lineWidth = 12;
+      ctx.strokeStyle = "rgba(22, 163, 74, 0.16)";
+      ctx.arc(
+        answerCircle.center.x,
+        answerCircle.center.y,
+        answerCircle.radius,
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+
+      // 실제 정답 원
+      ctx.beginPath();
+      ctx.setLineDash([10, 8]);
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = "#16a34a";
+      ctx.arc(
+        answerCircle.center.x,
+        answerCircle.center.y,
+        answerCircle.radius,
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // 기준 원 표시: 연습용으로만 사용
+    function drawGuideCircle(rect) {
+      const radius = Math.min(rect.width, rect.height) * 0.32;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+
+      ctx.beginPath();
+      ctx.setLineDash([8, 8]);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(37, 99, 235, 0.22)";
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function getCanvasPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      const touch = event.touches ? event.touches[0] : event;
+
+      return {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
+        time: performance.now()
+      };
+    }
+
+    function startDrawing(event) {
+      event.preventDefault();
+
+      isDrawing = true;
+      points = [];
+      answerCircle = null;
+      drawStartTime = performance.now();
+
+      scoreEl.textContent = "--";
+      scoreEl.classList.remove("pop");
+      feedbackEl.textContent = mode === "time" ? "1초 안에 원을 완성하세요." : "좋아요. 원을 끝까지 이어서 그려보세요.";
+      hintEl.classList.add("hidden");
+
+      startTimer();
+      points.push(getCanvasPoint(event));
+      redraw();
+    }
+
+    function draw(event) {
+      if (!isDrawing) return;
+      event.preventDefault();
+
+      if (mode === "time" && performance.now() - drawStartTime > timeLimit) {
+        stopDrawing(event);
+        return;
+      }
+
+      points.push(getCanvasPoint(event));
+      redraw();
+    }
+
+    function stopDrawing(event) {
+      if (!isDrawing) return;
+      event.preventDefault();
+
+      isDrawing = false;
+      stopTimer();
+
+      // 손을 떼면 자동으로 채점
+      setTimeout(judgeCircle, 80);
+    }
+
+    function startTimer() {
+      stopTimer();
+
+      if (mode !== "time") {
+        timerEl.textContent = "∞";
+        return;
+      }
+
+      timerInterval = setInterval(() => {
+        const left = Math.max(0, timeLimit - (performance.now() - drawStartTime));
+        timerEl.textContent = (left / 1000).toFixed(1);
+
+        if (left <= 0) {
+          stopTimer();
+        }
+      }, 50);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+
+      if (mode === "time" && !isDrawing) {
+        timerEl.textContent = "0.0";
+      }
+    }
+
+    function distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function calculateCircleScore(points) {
+      if (points.length < 35) {
+        return {
+          score: 0,
+          message: "점이 너무 적어요. 조금 더 천천히 크게 그려보세요."
+        };
+      }
+
+      const drawingTime = points[points.length - 1].time - points[0].time;
+
+      const center = points.reduce(
+        (sum, p) => ({ x: sum.x + p.x, y: sum.y + p.y }),
+        { x: 0, y: 0 }
+      );
+
+      center.x /= points.length;
+      center.y /= points.length;
+
+      const distances = points.map(p => distance(p, center));
+      const averageRadius = distances.reduce((sum, d) => sum + d, 0) / distances.length;
+
+      if (averageRadius < 45) {
+        return {
+          score: 0,
+          message: "원이 너무 작아요. 조금 더 크게 그려보세요."
+        };
+      }
+
+      const averageError = distances.reduce(
+        (sum, d) => sum + Math.abs(d - averageRadius),
+        0
+      ) / distances.length;
+
+      const roundnessRatio = averageError / averageRadius;
+      let roundnessScore = 100 - roundnessRatio * 265;
+
+      const start = points[0];
+      const end = points[points.length - 1];
+      const closeError = distance(start, end) / averageRadius;
+      let closeScore = 100 - closeError * 95;
+
+      const sizeScore = Math.min(100, Math.max(0, (averageRadius / 125) * 100));
+
+      // 속도 보정
+      // 너무 느리거나 너무 빠르면 감점한다.
+      let speedScore = 100;
+      if (mode === "normal" || mode === "guide") {
+        if (drawingTime < 350) speedScore = 72;
+        else if (drawingTime > 4500) speedScore = 78;
+      }
+
+      if (mode === "time") {
+        // 1초 모드는 빠르게 그리는 것이 목표라서 시간 감점 방식을 다르게 적용
+        speedScore = drawingTime <= 1000 ? 100 : 60;
+      }
+
+      let finalScore =
+        roundnessScore * 0.62 +
+        closeScore * 0.2 +
+        sizeScore * 0.1 +
+        speedScore * 0.08;
+
+      // 1초 모드는 난도가 높으므로 약간 보너스
+      if (mode === "time") {
+        finalScore += 4;
+      }
+
+      // 기준 원 모드는 도움을 받는 모드라 약간 감점
+      if (mode === "guide") {
+        finalScore -= 6;
+      }
+
+      // 100점이 너무 쉽게 나오지 않도록 곡선 보정
+      finalScore = Math.pow(Math.max(0, finalScore) / 100, 1.15) * 100;
+      finalScore = Math.round(Math.max(0, Math.min(100, finalScore)));
+
+      return {
+        score: finalScore,
+        message: getFeedback(finalScore),
+        details: {
+          center,
+          averageRadius,
+          averageError,
+          closeError,
+          drawingTime
+        }
+      };
+    }
+
+    function getFeedback(score) {
+      if (score >= 98) return "PERFECT. 거의 기계처럼 완벽합니다.";
+      if (score >= 90) return "EXCELLENT. 손이 컴퍼스에 가깝습니다.";
+      if (score >= 80) return "GREAT. 원의 균형이 아주 좋습니다.";
+      if (score >= 70) return "GOOD. 조금만 더 일정하게 그려보세요.";
+      if (score >= 55) return "괜찮아요. 원이 조금 찌그러졌습니다.";
+      if (score >= 35) return "연습이 필요합니다. 크게 천천히 그려보세요.";
+      return "아직 원보다는 낙서에 가까워요. 다시 도전해보세요.";
+    }
+
+    function setScoreColor(score) {
+      if (score >= 90) scoreEl.style.color = "#16a34a";
+      else if (score >= 70) scoreEl.style.color = "#2563eb";
+      else if (score >= 50) scoreEl.style.color = "#f59e0b";
+      else scoreEl.style.color = "#dc2626";
+
+      scoreEl.classList.add("pop");
+      setTimeout(() => scoreEl.classList.remove("pop"), 240);
+    }
+
+    function showBigEffect(score, isNewRecord) {
+      let text = "";
+
+      if (score >= 98) text = "PERFECT";
+      else if (score >= 90) text = "EXCELLENT";
+      else if (score >= 80) text = "GREAT";
+      else if (score >= 70) text = "GOOD";
+      else if (isNewRecord) text = "NEW BEST";
+
+      if (!text) return;
+
+      bigEffectEl.textContent = text;
+      bigEffectEl.classList.remove("show");
+      void bigEffectEl.offsetWidth;
+      bigEffectEl.classList.add("show");
+    }
+
+    function vibrateByScore(score, isNewRecord) {
+      if (!navigator.vibrate) return;
+
+      if (isNewRecord) navigator.vibrate([40, 30, 40, 30, 70]);
+      else if (score >= 90) navigator.vibrate([30, 30, 60]);
+      else navigator.vibrate(25);
+    }
+
+    function saveHistory(score) {
+      const record = {
+        score,
+        mode,
+        date: new Date().toISOString()
+      };
+
+      playHistory.unshift(record);
+      playHistory = playHistory.slice(0, 50);
+      localStorage.setItem("circleMasterHistory", JSON.stringify(playHistory));
+    }
+
+    function judgeCircle() {
+      if (points.length === 0) {
+        feedbackEl.textContent = "먼저 원을 그려주세요.";
+        return;
+      }
+
+      const result = calculateCircleScore(points);
+      const score = result.score;
+
+      scoreEl.textContent = score;
+      setScoreColor(score);
+      saveHistory(score);
+
+      // 채점 결과를 바탕으로 초록색 정답 원을 표시한다.
+      if (result.details) {
+        answerCircle = {
+          center: result.details.center,
+          radius: result.details.averageRadius
+        };
+      } else {
+        answerCircle = null;
+      }
+
+      let isNewRecord = false;
+
+      if (score > bestScore) {
+        bestScore = score;
+        isNewRecord = true;
+        localStorage.setItem("circleMasterBestScore", String(bestScore));
+        bestScoreEl.textContent = bestScore;
+      }
+
+      feedbackEl.textContent = result.message + " 초록 점선이 정답 원입니다." + (isNewRecord ? " 신기록입니다!" : "");
+      showBigEffect(score, isNewRecord);
+      vibrateByScore(score, isNewRecord);
+
+      // 채점 후에도 기준 원과 사용자가 그린 선을 유지
+      redraw();
+    }
+
+    function resetCanvas() {
+      points = [];
+      answerCircle = null;
+      scoreEl.textContent = "--";
+      scoreEl.style.color = "#111827";
+      feedbackEl.textContent = "캔버스에 원을 한 번에 그려보세요.";
+      hintEl.classList.remove("hidden");
+      timerEl.textContent = mode === "time" ? "1.0" : "∞";
+      stopTimer();
+      redraw();
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      showGuideCircle = nextMode === "guide";
+
+      normalModeButton.classList.toggle("active", mode === "normal");
+      timeModeButton.classList.toggle("active", mode === "time");
+      guideModeButton.classList.toggle("active", mode === "guide");
+
+      if (mode === "normal") feedbackEl.textContent = "일반 모드입니다. 가장 자연스럽게 원을 그려보세요.";
+      if (mode === "time") feedbackEl.textContent = "1초 모드입니다. 빠르고 정확하게 그려보세요.";
+      if (mode === "guide") feedbackEl.textContent = "기준 원 모드입니다. 점수는 약간 감점됩니다.";
+
+      resetCanvas();
+    }
+
+    canvas.addEventListener("touchstart", startDrawing, { passive: false });
+    canvas.addEventListener("touchmove", draw, { passive: false });
+    canvas.addEventListener("touchend", stopDrawing, { passive: false });
+    canvas.addEventListener("touchcancel", stopDrawing, { passive: false });
+
+    canvas.addEventListener("mousedown", startDrawing);
+    canvas.addEventListener("mousemove", draw);
+    window.addEventListener("mouseup", stopDrawing);
+
+    resetButton.addEventListener("click", resetCanvas);
+    scoreButton.addEventListener("click", judgeCircle);
+
+    normalModeButton.addEventListener("click", () => setMode("normal"));
+    timeModeButton.addEventListener("click", () => setMode("time"));
+    guideModeButton.addEventListener("click", () => setMode("guide"));
+
+    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("orientationchange", () => {
+      setTimeout(resizeCanvas, 250);
+    });
+
+    resizeCanvas();
+  </script>
+</body>
+</html>
